@@ -63,7 +63,7 @@ async function main() {
               address: '서울시 마포구',
               expectedSize: '중형',
               monthlyCount: 50 + i * 10,
-              pickupPreference: ['월', '수']
+              pickupPreference: '월,수',  // StoreInfo
             }
           },
           points: {
@@ -83,14 +83,14 @@ async function main() {
       data: {
         userId: owners[0].id,
         driverId: drivers[0].id,
-        pickupDays: ['월', '수']
+        pickupDays: '월,수'
       }
     }),
     prisma.order.create({
       data: {
         userId: owners[0].id,
         driverId: drivers[0].id,
-        pickupDays: ['화', '목']
+        pickupDays: '화,목'
       }
     })
   ]);

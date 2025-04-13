@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -25,7 +25,7 @@ enum DocumentType {
 
 model User {
   // 🧍 공통 필드
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId // MongoDB 고유 ID
+  id         Int      @id @default(autoincrement()) // MySQL 고유 ID
   email      String   @unique // 로그인용 이메일 (중복 불가)
   password   String // 해싱된 비밀번호
   name       String // 사용자 이름
@@ -36,7 +36,7 @@ model User {
   // 소상공인(OWNER) 전용
   storeInfo          StoreInfo?
   subscriptionPlan   SubscriptionPlan?  @relation(fields: [subscriptionPlanId], references: [id]) // 선택한 구독제
-  subscriptionPlanId String?            @db.ObjectId // 구독제 ID (ObjectId)
+  subscriptionPlanId Int? // 구독제 ID
   orders             Order[] // 소상공인이 생성한 주문들 (1:N)
   ownedParcels       Parcel[]           @relation("OwnerDetails") // 소상공인이 보낸 소포들
   points             PointTransaction[] // 포인트 충전 및 사용 내역
@@ -49,72 +49,72 @@ model User {
 }
 
 model StoreInfo {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId // 고유 ID
+  id               Int      @id @default(autoincrement()) // 고유 ID
   user             User     @relation(fields: [userId], references: [id]) // 소유한 사용자 (OWNER)
-  userId           String   @unique @db.ObjectId // 연결된 유저 ID
+  userId           Int      @unique // 연결된 유저 ID
   address          String // 가게 주소
   expectedSize     String // 예상 택배 크기 (소형/중형/대형 등)
   monthlyCount     Int // 월 평균 택배 수량
-  pickupPreference String[] // 수거 희망 요일 (ex: 월, 수)
+  pickupPreference String  // 수거 희망 요일 (ex: 월, 수) → 배열 제거 (MySQL은 기본적으로 배열 지원 X)
 }
 
 model DriverInfo {
-  id             String @id @default(auto()) @map("_id") @db.ObjectId // 고유 ID
+  id             Int    @id @default(autoincrement()) // 고유 ID
   user           User   @relation(fields: [userId], references: [id]) // 연결된 배송기사 유저
-  userId         String @unique @db.ObjectId // 유저 ID
+  userId         Int    @unique // 유저 ID
   regionCity     String // 담당 시 (서울시 등)
   regionDistrict String // 담당 구 (강남구 등)
 }
 
 model DocumentUpload {
-  id         String       @id @default(auto()) @map("_id") @db.ObjectId // 고유 ID
+  id         Int          @id @default(autoincrement()) // 고유 ID
   user       User         @relation(fields: [userId], references: [id]) // 업로드한 사용자
-  userId     String       @db.ObjectId // 유저 ID
+  userId     Int // 유저 ID
   type       DocumentType // 서류 종류 (LICENSE, CAREER)
   fileUrl    String // S3 등 외부 파일 URL
   uploadedAt DateTime     @default(now()) // 업로드 시각
 }
 
 model PointTransaction {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId // 고유 ID
+  id        Int      @id @default(autoincrement()) // 고유 ID
   user      User     @relation(fields: [userId], references: [id]) // 대상 사용자
-  userId    String   @db.ObjectId // 유저 ID
+  userId    Int // 유저 ID
   amount    Int // 포인트 변화량 (+충전, -사용)
   reason    String // 사유 또는 설명
   createdAt DateTime @default(now()) // 생성 시각
 }
 
 model SubscriptionPlan {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId // 고유 ID
-  name      String   @unique // 구독제 이름 (베이직, 프리미엄 등)
+  id        Int     @id @default(autoincrement()) // 고유 ID
+  name      String  @unique // 구독제 이름 (베이직, 프리미엄 등)
   price     Int // 요금 (정액제)
   createdAt DateTime @default(now()) // 등록 시각
   users     User[] // 이 요금제를 사용하는 유저들
 }
 
 model Order {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId // 고유 ID
+  id         Int      @id @default(autoincrement()) // 고유 ID
   user       User     @relation(fields: [userId], references: [id]) // 주문한 사용자 (OWNER)
-  userId     String   @db.ObjectId // 유저 ID
+  userId     Int // 유저 ID
   driver     User?    @relation("DriverAssignedOrders", fields: [driverId], references: [id]) // 배정된 기사
-  driverId   String?  @db.ObjectId // 기사 유저 ID
-  pickupDays String[] // 수거 희망 요일
+  driverId   Int? // 기사 유저 ID
+  pickupDays String // 수거 희망 요일 (단일 문자열로 변경)
   createdAt  DateTime @default(now()) // 주문 생성 시각
   parcels    Parcel[] // 이 주문에 포함된 소포들
 }
 
 model Parcel {
-  id               String         @id @default(auto()) @map("_id") @db.ObjectId // 고유 ID
-  order            Order          @relation(fields: [orderId], references: [id]) // 소속 주문
-  orderId          String         @db.ObjectId // 주문 ID
-  owner            User           @relation("OwnerDetails", fields: [ownerId], references: [id]) // 발송자 (OWNER)
-  ownerId          String         @db.ObjectId // 발송자 유저 ID
-  driver           User?          @relation("DriverDetails", fields: [driverId], references: [id]) // 배송 기사
-  driverId         String?        @db.ObjectId // 기사 유저 ID
-  trackingCode     String         @unique // 운송장 번호 (고유)
+  id               Int             @id @default(autoincrement()) // 고유 ID
+  order            Order           @relation(fields: [orderId], references: [id]) // 소속 주문
+  orderId          Int // 주문 ID
+  owner            User            @relation("OwnerDetails", fields: [ownerId], references: [id]) // 발송자 (OWNER)
+  ownerId          Int // 발송자 유저 ID
+  driver           User?           @relation("DriverDetails", fields: [driverId], references: [id]) // 배송 기사
+  driverId         Int?
+  trackingCode     String          @unique // 운송장 번호 (고유)
   recipientName    String // 수령인 이름
   recipientAddr    String // 수령인 주소
-  status           DeliveryStatus @default(PENDING) // 배송 상태 (PENDING, IN_PROGRESS, COMPLETED)
+  status           DeliveryStatus  @default(PENDING) // 배송 상태 (PENDING, IN_PROGRESS, COMPLETED)
   completedAt      DateTime? // 배송 완료 시각
-  deliveryImageUrl String?        @default("") // 인증 사진 S3 URL
+  deliveryImageUrl String          @default("") // 인증 사진 S3 URL
 }
