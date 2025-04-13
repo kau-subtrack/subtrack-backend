@@ -23,6 +23,11 @@ enum DocumentType {
   CAREER // 경력 증명서
 }
 
+enum PointTransactionType {
+  CHARGE  // 충전
+  USE     // 사용
+}
+
 model User {
   // 🧍 공통 필드
   id         Int      @id @default(autoincrement()) // MySQL 고유 ID
@@ -32,6 +37,7 @@ model User {
   userType   UserType // 사용자 유형 (OWNER | DRIVER)
   isApproved Boolean  @default(false) // 관리자의 승인 여부
   createdAt  DateTime @default(now()) // 생성 시각
+  
 
   // 소상공인(OWNER) 전용
   storeInfo          StoreInfo?
@@ -40,6 +46,7 @@ model User {
   orders             Order[] // 소상공인이 생성한 주문들 (1:N)
   ownedParcels       Parcel[]           @relation("OwnerDetails") // 소상공인이 보낸 소포들
   points             PointTransaction[] // 포인트 충전 및 사용 내역
+  defaultPickupDate String? // 사용자가 처음 설정한 수거 희망 요일 (ex: "월", "수")
 
   // 배송기사(DRIVER) 전용
   driverInfo       DriverInfo?
@@ -55,6 +62,8 @@ model StoreInfo {
   address          String // 가게 주소
   expectedSize     String // 예상 택배 크기 (소형/중형/대형 등)
   monthlyCount     Int // 월 평균 택배 수량
+  latitude       Float?  // 지도용 위도
+  longitude      Float?  // 지도용 경도
   pickupPreference String  // 수거 희망 요일 (ex: 월, 수) → 배열 제거 (MySQL은 기본적으로 배열 지원 X)
 }
 
@@ -80,8 +89,10 @@ model PointTransaction {
   user      User     @relation(fields: [userId], references: [id]) // 대상 사용자
   userId    Int // 유저 ID
   amount    Int // 포인트 변화량 (+충전, -사용)
+  type PointTransactionType // 충전 or 사용 여부
   reason    String // 사유 또는 설명
   createdAt DateTime @default(now()) // 생성 시각
+  expiredAt DateTime? // 소멸 정책 적용 시 참고용
 }
 
 model SubscriptionPlan {
