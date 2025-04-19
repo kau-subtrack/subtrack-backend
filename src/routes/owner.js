@@ -1,15 +1,17 @@
 import express from 'express';
 import { getHomeInfo, getCompletedShipments, getShipmentList, getShipmentDetail, registerShipment, 
          subscribePlan, chargePoints, getPointHistory, updateStoreInfo, changePassword } from '../controllers/ownerControllers.js';
-
-// import { jwtMiddleware } from '../middlewares/jwtMiddleware.js';  // 필요 시 추가
+import { getOwnerHome } from "../services/ohome.js";
+import { jwtMiddleware } from '../middlewares/jwtMiddleware.js';  // 필요 시 추가
 
 const router = express.Router();
 
-// router.use(jwtMiddleware);  // 전체 인증 필요 시 사용
+//router.use(jwtMiddleware);  // 전체 인증 필요 시 사용
 
+// test
+router.get('/h', jwtMiddleware, getOwnerHome);
 // 홈
-router.get('/home', getHomeInfo); // 홈 화면 정보
+router.get('/home', jwtMiddleware, getHomeInfo); // 홈 화면 정보
 
 // 발송
 router.get('/shipment-history/completed', getCompletedShipments); // 배송완료된 등록 내역

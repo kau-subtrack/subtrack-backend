@@ -1,3 +1,4 @@
+
 // 홈
 export const getHomeInfo = async (req, res, next) => {
   try {

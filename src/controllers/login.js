@@ -7,11 +7,9 @@ import jwt from 'jsonwebtoken';
 
 
 export const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, userType } = req.body;
 
   try {
-    const connection = await pool.getConnection();
-
     const [users] = await pool.query('SELECT * FROM User WHERE email = ?', [email]);
     if (users.length === 0) {
       return res.status(401).json({ message: '이메일 또는 비밀번호가 잘못되었습니다.' });
@@ -23,9 +21,11 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: '이메일 또는 비밀번호가 잘못되었습니다.' });
     }
 
-    const token = jwt.sign({ userId: user.id, userType: user.userType }, process.env.JWT_SECRET, {
-      expiresIn: '1d',
-    });
+    if (user.userType !== userType) {
+      return res.status(401).json({ message: '소상공인 또는 택배기사 설정이 잘못되었습니다.'});
+    }
+
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
     res.status(200).json({ message: '로그인 성공', token });
   } catch (error) { 
