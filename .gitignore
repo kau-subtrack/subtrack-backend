@@ -1,4 +1,5 @@
 node_modules/
 https/
 .env
-.DS_Store
+*.pem
+*.txt

@@ -43,14 +43,12 @@ model User {
   storeInfo          StoreInfo?
   subscriptionPlan   SubscriptionPlan?  @relation(fields: [subscriptionPlanId], references: [id]) // 선택한 구독제
   subscriptionPlanId Int? // 구독제 ID
-  orders             Order[] // 소상공인이 생성한 주문들 (1:N)
   ownedParcels       Parcel[]           @relation("OwnerDetails") // 소상공인이 보낸 소포들
   points             PointTransaction[] // 포인트 충전 및 사용 내역
   defaultPickupDate String? // 사용자가 처음 설정한 수거 희망 요일 (ex: "월", "수")
 
   // 배송기사(DRIVER) 전용
   driverInfo       DriverInfo?
-  assignedOrders   Order[]          @relation("DriverAssignedOrders") // 기사에게 배정된 주문들
   deliveredParcels Parcel[]         @relation("DriverDetails") // 기사에게 배정된 소포들
   documents        DocumentUpload[] // 자격증/경력 등 제출된 서류들
 }
@@ -59,7 +57,8 @@ model StoreInfo {
   id               Int      @id @default(autoincrement()) // 고유 ID
   user             User     @relation(fields: [userId], references: [id]) // 소유한 사용자 (OWNER)
   userId           Int      @unique // 연결된 유저 ID
-  address          String // 가게 주소
+  address          String // 도로명/지번 주소 (카카오 API에서 가져온 주소)
+  detailAddress    String // 사용자 입력 상세 주소 (4층 402호 등)
   expectedSize     String // 예상 택배 크기 (소형/중형/대형 등)
   monthlyCount     Int // 월 평균 택배 수량
   latitude       Float?  // 지도용 위도
@@ -71,6 +70,8 @@ model DriverInfo {
   id             Int    @id @default(autoincrement()) // 고유 ID
   user           User   @relation(fields: [userId], references: [id]) // 연결된 배송기사 유저
   userId         Int    @unique // 유저 ID
+  phoneNumber   String  // 기사 전화번호
+  vehicleNumber String  // 기사 차량번호
   regionCity     String // 담당 시 (서울시 등)
   regionDistrict String // 담당 구 (강남구 등)
 }
@@ -103,29 +104,25 @@ model SubscriptionPlan {
   users     User[] // 이 요금제를 사용하는 유저들
 }
 
-model Order {
-  id         Int      @id @default(autoincrement()) // 고유 ID
-  user       User     @relation(fields: [userId], references: [id]) // 주문한 사용자 (OWNER)
-  userId     Int // 유저 ID
-  driver     User?    @relation("DriverAssignedOrders", fields: [driverId], references: [id]) // 배정된 기사
-  driverId   Int? // 기사 유저 ID
-  pickupDays String // 수거 희망 요일 (단일 문자열로 변경)
-  createdAt  DateTime @default(now()) // 주문 생성 시각
-  parcels    Parcel[] // 이 주문에 포함된 소포들
-}
-
 model Parcel {
   id               Int             @id @default(autoincrement()) // 고유 ID
-  order            Order           @relation(fields: [orderId], references: [id]) // 소속 주문
-  orderId          Int // 주문 ID
   owner            User            @relation("OwnerDetails", fields: [ownerId], references: [id]) // 발송자 (OWNER)
   ownerId          Int // 발송자 유저 ID
   driver           User?           @relation("DriverDetails", fields: [driverId], references: [id]) // 배송 기사
   driverId         Int?
-  trackingCode     String          @unique // 운송장 번호 (고유)
+
+  productName      String // 제품명 (나이키 운동화 등)
+  size             String // 택배 크기 (소/중/대/특대 등)
+  caution          Boolean @default(false) // 파손주의 여부
   recipientName    String // 수령인 이름
+  recipientPhone   String // 수령인 전화번호
   recipientAddr    String // 수령인 주소
+  detailAddress    String? // 수령인 상세 주소
+  trackingCode     String? @unique // 운송장 번호 (고유) — 생성 시에는 없어도 됨
+
   status           DeliveryStatus  @default(PENDING) // 배송 상태 (PENDING, IN_PROGRESS, COMPLETED)
+  pickupDate DateTime? // 실제 수거 예정일 (선택적 필드)
   completedAt      DateTime? // 배송 완료 시각
   deliveryImageUrl String          @default("") // 인증 사진 S3 URL
+  createdAt  DateTime @default(now()) // 소포 등록 시각
 }
