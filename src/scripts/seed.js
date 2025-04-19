@@ -1,16 +1,25 @@
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
 
 async function main() {
+  await prisma.parcel.deleteMany();
+  await prisma.documentUpload.deleteMany();
+  await prisma.storeInfo.deleteMany();
+  await prisma.driverInfo.deleteMany();
+  await prisma.pointTransaction.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.subscriptionPlan.deleteMany();
+
   // 1. 구독제 생성
-  const subscriptionPlans = await prisma.subscriptionPlan.createMany({
+  await prisma.subscriptionPlan.createMany({
     data: [
       { name: '베이직', price: 10000 },
       { name: '스탠다드', price: 20000 },
       { name: '프리미엄', price: 30000 },
       { name: '엔터프라이즈', price: 50000 }
-    ]
-  });
+    ],
+    skipDuplicates: true
+  })
 
   // 2. 배송기사 4명 생성
   const drivers = await Promise.all(
@@ -24,6 +33,8 @@ async function main() {
           isApproved: true,
           driverInfo: {
             create: {
+              phoneNumber: `010-0000-00${i + 1}`,
+              vehicleNumber: `서울 12가 34${i + 1}`,
               regionCity: '서울시',
               regionDistrict: ['강남구', '성동구', '관악구', '서초구'][i]
             }
@@ -43,7 +54,7 @@ async function main() {
         }
       })
     )
-  );
+  )
 
   // 3. 소상공인 4명 생성
   const owners = await Promise.all(
@@ -61,66 +72,55 @@ async function main() {
           storeInfo: {
             create: {
               address: '서울시 마포구',
+              detailAddress: `${i + 1}층 10${i}호`,
               expectedSize: '중형',
               monthlyCount: 50 + i * 10,
-              pickupPreference: '월,수',  // StoreInfo
+              pickupPreference: '월,수'
             }
           },
           points: {
             create: {
               amount: 10000,
-              reason: '초기 지급'
+              reason: '초기 지급',
+              type: 'CHARGE'
             }
           }
         }
       })
     )
-  );
+  )
 
-  // 4. 주문 2개 생성 (owner[0]과 driver[0] 연결)
-  const [order1, order2] = await Promise.all([
-    prisma.order.create({
-      data: {
-        userId: owners[0].id,
-        driverId: drivers[0].id,
-        pickupDays: '월,수'
-      }
-    }),
-    prisma.order.create({
-      data: {
-        userId: owners[0].id,
-        driverId: drivers[0].id,
-        pickupDays: '화,목'
-      }
-    })
-  ]);
-
-  // 5. 소포 7개 생성 (2개의 주문에 분배)
-  const statuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
+  // 4. 소포 7개 생성 (Parcel 단독 등록)
+  const statuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED']
   await Promise.all(
     Array.from({ length: 7 }).map((_, i) =>
       prisma.parcel.create({
         data: {
-          orderId: i < 4 ? order1.id : order2.id,
           ownerId: owners[0].id,
           driverId: drivers[0].id,
-          trackingCode: `TRK00${i + 1}`,
+          productName: `운동화${i + 1}`,
+          size: ['소', '중', '대', '특대'][i % 4],
+          caution: i % 2 === 0,
           recipientName: `수령인${i + 1}`,
+          recipientPhone: `010-1234-56${i + 1}`,
           recipientAddr: `서울시 ${['강남구', '중구', '종로구', '마포구'][i % 4]}`,
+          detailAddress: `${i + 1}층`,
+          trackingCode: `TRK00${i + 1}`,
           status: statuses[i % statuses.length],
+          pickupDate: new Date(`2025-04-${10 + i}`),
           deliveryImageUrl: i % 3 === 0 ? 'https://s3.example.com/proof.png' : ''
         }
       })
     )
-  );
+  )
 
-  console.log('✅ 시드 데이터 생성 완료!');
+  console.log('✅ 시드 데이터 생성 완료!')
 }
 
 main()
   .then(() => prisma.$disconnect())
   .catch((e) => {
-    console.error('❌ 에러 발생:', e);
-    prisma.$disconnect();
-    process.exit(1);
-  });
+    console.error('❌ 에러 발생:', e)
+    prisma.$disconnect()
+    process.exit(1)
+  })
