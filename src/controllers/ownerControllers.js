@@ -1,8 +1,11 @@
 
 // 홈
+import {getOwnerHome} from "../services/ownerhomeService.js";
+
 export const getHomeInfo = async (req, res, next) => {
   try {
-    res.status(200).json({ message: '홈 화면 정보 반환' });
+    const homeInfo = await getOwnerHome(req);
+    res.status(200).json( homeInfo );
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: '서버 오류 발생' });
