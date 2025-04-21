@@ -5,10 +5,10 @@ import { jwtMiddleware } from '../middlewares/jwtMiddleware.js';  // 필요 시 
 
 const router = express.Router();
 
-//router.use(jwtMiddleware);  // 전체 인증 필요 시 사용
+router.use(jwtMiddleware);  // 전체 인증 필요 시 사용
 
 // 홈
-router.get('/home', jwtMiddleware, getHomeInfo); // 홈 화면 정보
+router.get('/home', getHomeInfo); // 홈 화면 정보
 
 // 발송
 router.get('/shipment-history/completed', getCompletedShipments); // 배송완료된 등록 내역

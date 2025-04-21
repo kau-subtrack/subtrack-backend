@@ -1,6 +1,7 @@
 
 // 홈
 import {getOwnerHome} from "../services/ownerhomeService.js";
+import {postShipment} from "../services/ownershipmentService.js";
 
 export const getHomeInfo = async (req, res, next) => {
   try {
@@ -42,7 +43,8 @@ export const getShipmentDetail = async (req, res, next) => {
 
 export const registerShipment = async (req, res, next) => {
   try {
-    res.status(200).json({ message: '배송 정보 등록 완료' });
+    const shipmentInfo = await postShipment(req);
+    res.status(200).json(shipmentInfo);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: '서버 오류 발생' });
