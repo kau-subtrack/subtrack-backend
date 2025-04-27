@@ -45,6 +45,7 @@ model User {
   subscriptionPlanId Int? // 구독제 ID
   ownedParcels       Parcel[]           @relation("OwnerDetails") // 소상공인이 보낸 소포들
   points             PointTransaction[] // 포인트 충전 및 사용 내역
+  pointBalance      Int      @default(0)   // 보유 포인트
   defaultPickupDate String? // 사용자가 처음 설정한 수거 희망 요일 (ex: "월", "수")
 
   // 배송기사(DRIVER) 전용
@@ -97,9 +98,10 @@ model PointTransaction {
 }
 
 model SubscriptionPlan {
-  id        Int     @id @default(autoincrement()) // 고유 ID
-  name      String  @unique // 구독제 이름 (베이직, 프리미엄 등)
-  price     Int // 요금 (정액제)
+  id        Int     @id // Id는 1, 2, 3, 4, 5, 6 예정
+  name      String  @unique // 구독제 이름 (Lite, Premium Plus 등)
+  price     Int // 가격
+  grantedPoint Int // 획득 금액
   createdAt DateTime @default(now()) // 등록 시각
   users     User[] // 이 요금제를 사용하는 유저들
 }

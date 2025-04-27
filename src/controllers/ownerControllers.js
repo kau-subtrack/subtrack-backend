@@ -1,6 +1,7 @@
 
 // 홈
-import {getOwnerHome} from "../services/ownerhomeService.js";
+import { getOwnerHome } from "../services/ownerhomeService.js";
+import { subscribeOwnerPlan, chargeOwnerPoints, getOwnerPointHistory  } from "../services/ownerPointService.js";
 
 export const getHomeInfo = async (req, res, next) => {
   try {
@@ -52,28 +53,34 @@ export const registerShipment = async (req, res, next) => {
 // 포인트/구독
 export const subscribePlan = async (req, res, next) => {
   try {
-    res.status(200).json({ message: '구독 완료' });
+    const result = await subscribeOwnerPlan(req, res);
+    res.status(200).json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: '서버 오류 발생' });
+    const statusCode = err.status || 500;
+    res.status(statusCode).json({ message: err.message || '서버 오류 발생' });
   }
 };
 
 export const chargePoints = async (req, res, next) => {
   try {
-    res.status(200).json({ message: '포인트 충전 완료' });
+    const result = await chargeOwnerPoints(req);
+    res.status(200).json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: '서버 오류 발생' });
+    const statusCode = err.status || 500;
+    res.status(statusCode).json({ message: err.message || '서버 오류 발생' });
   }
 };
 
 export const getPointHistory = async (req, res, next) => {
   try {
-    res.status(200).json({ message: '포인트 사용 이력 조회 (보류 상태)' });
+    const result = await getOwnerPointHistory(req, res);
+    res.status(200).json(result);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: '서버 오류 발생' });
+    console.error(err); 
+    const statusCode = err.status || 500;
+    res.status(statusCode).json({ message: err.message || '서버 오류 발생' });
   }
 };
 
