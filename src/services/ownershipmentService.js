@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import { pool } from '../../config/db.js';
-import {s2point} from "../../config/sizeToPoint.js";
+import { pool } from '../config/db.js';
+import {s2point} from "../config/sizeToPoint.js";
 
 // get 배송 전체 내역
 export const getShipmentListView = async (req) => {

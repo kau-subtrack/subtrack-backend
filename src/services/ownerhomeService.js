@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import { pool } from '../../config/db.js';
+import { pool } from '../config/db.js';
 
 // 소상공인 홈화면
 export const getOwnerHome = async (req, res) => {
