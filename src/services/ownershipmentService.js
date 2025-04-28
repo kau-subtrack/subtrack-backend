@@ -1,10 +1,84 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import { pool } from '../config/db.js';
-import {s2point} from "../config/sizeToPoint.js";
+import { pool } from '../../config/db.js';
+import {s2point} from "../../config/sizeToPoint.js";
+
+// get 배송 전체 내역
+export const getShipmentListView = async (req) => {
+  //기본 금일 날짜
+  const [year, month, day] = new Date(+new Date() + 3240 * 10000).toISOString().split("T")[0].split('-');
+  try {
+    const year = req.query.year || year;
+    const month = req.query.month || month;
+    const day = req.query.day || day;
+    const userId = req.userId;
+
+    //ex)2025-04-21  day까지만 확인
+    const time = year + '-' + month + '-' + day;
+
+    //날짜기준 배송리스트 조회
+    const [result] = await pool.query(
+        'SELECT trackingCode, status FROM Parcel WHERE ownerId = ? AND DATE(createdAt) = ?',
+        [userId, time]
+    );
+
+    //json 양식
+    return { status: true, date: time, data: [result] };
+  } catch (err) {
+    console.error(err);
+    throw new Error('유효하지 않습니다.'); //오류 분류 추후 수정
+  }
+};
+
+
+// get 배송 완료 내역
+export const getShipmentCompleteView = async (req) => {
+  //기본 금일 날짜
+  const [year, month, day] = new Date(+new Date() + 3240 * 10000).toISOString().split("T")[0].split('-');
+  try {
+    const year = req.query.year || year;
+    const month = req.query.month || month;
+    //const day = req.query.day || day;
+    const userId = req.userId;
+
+    //ex)2025-04-00  month까지 확인
+    const time = year + '-' + month;// + '-' + day;
+
+    //날짜기준 배송리스트 조회 ( 월간 확인 )
+    const [result] = await pool.query(
+        "SELECT trackingCode, recipientName, recipientAddr, productName, status, completedAt FROM Parcel WHERE ownerId = ? AND DATE_FORMAT(completedAt, '%Y-%m') = ?",
+        [userId, time]
+    );
+
+    //json 양식
+    return { status: true, date: time, data: [result] };
+  } catch (err) {
+    console.error(err);
+    throw new Error('유효하지 않습니다.'); //오류 분류 추후 수정
+  }
+};
+
+
+// get 단일배송정보조회
+export const getShipmentDetailView = async (req) => {
+  try {
+    const track = req.query.track;
+    //trackingCode 기준 배송리스트 조회
+    const [result] = await pool.query(
+        'SELECT * FROM Parcel WHERE trackingCode = ?',
+        [track]
+    );
+
+    //json 양식
+    return { status: true, data: result };
+  } catch (err) {
+    console.error(err);
+    throw new Error('유효하지 않습니다.'); //오류 분류 추후 수정
+  }
+};
 
 // 단건 배송 화면
-export const postShipment = async (req, res) => {
+export const postShipment = async (req) => {
   const { productName, recipientName, recipientPhone, recipientAddr, detailAddress, size, caution, pickupDate } = req.body;
 
   if (!productName || !recipientName || !recipientPhone || !recipientAddr || !detailAddress || !size) {
@@ -12,11 +86,9 @@ export const postShipment = async (req, res) => {
   }
 
   try {
-    //0.이거 항상 이렇게 받으면, auth header가 항상 필요하다는 것임?
     const userId = req.userId;
 
     //trackingcode 송장번호 고유 기입 - 수거시 생성
-
     //parcel 단건 배송정보 입력
     const [result] = await pool.query(
         'INSERT INTO Parcel ( ownerid, productName, size, caution, recipientname, recipientPhone, recipientAddr, detailAddress, pickupDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
