@@ -15,10 +15,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// 라우트 예시
-app.get('/', (req, res) => {
-  res.send('Hello, MongoDB Backend!');
-});
 app.use('/auth', authRoutes);
 app.use('/owner', ownerRoutes);
 
