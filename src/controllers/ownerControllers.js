@@ -1,7 +1,7 @@
 
 // 홈
 import { getOwnerHome } from "../services/ownerhomeService.js";
-import {postShipment, getShipmentListView, getShipmentDetailView, getShipmentCompleteView} from "../services/owner/ownershipmentService.js";
+import {postShipment, getShipmentListView, getShipmentDetailView, getShipmentCompleteView} from "../services/ownershipmentService.js";
 import { subscribeOwnerPlan, chargeOwnerPoints, getOwnerPointHistory  } from "../services/ownerPointService.js";
 
 export const getHomeInfo = async (req, res, next) => {
