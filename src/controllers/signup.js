@@ -1,5 +1,3 @@
-import dotenv from 'dotenv';
-dotenv.config();
 import bcrypt from 'bcrypt';
 import { pool } from '../config/db.js';
 
@@ -49,7 +47,7 @@ export const signup = async (req, res) => {
       const expectedSize = "소형";
       const monthlyCount = 0;
       const pickupPreference = "";
-      
+
       //User 정보 추가기입. 구독제 id? points. defaultpick
 
       // StoreInfo 등록
@@ -64,13 +62,13 @@ export const signup = async (req, res) => {
       //화물 운송 자격증 파일, 운전 경력 증명서 파일
       /*
       const [result] = await pool.query(
-          `INSERT INTO DocumnetUpload  
+          `INSERT INTO DocumnetUpload
           (userId, type, fileUrl)
            VALUES (?, ?, ?)`,
           [userId, ,]
       );
       */
-      
+
       //DriverInfo 등록
       await pool.query(
           `INSERT INTO DriverInfo 

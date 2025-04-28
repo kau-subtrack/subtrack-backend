@@ -1,11 +1,12 @@
 
 // 홈
 import { getOwnerHome } from "../services/ownerhomeService.js";
+import {postShipment, getShipmentListView, getShipmentDetailView, getShipmentCompleteView} from "../services/ownershipmentService.js";
 import { subscribeOwnerPlan, chargeOwnerPoints, getOwnerPointHistory  } from "../services/ownerPointService.js";
 
 export const getHomeInfo = async (req, res, next) => {
   try {
-    const homeInfo = await getOwnerHome(req);
+    const homeInfo = await getOwnerHome(req, res);
     res.status(200).json( homeInfo );
   } catch (err) {
     console.error(err);
@@ -16,7 +17,8 @@ export const getHomeInfo = async (req, res, next) => {
 // 발송
 export const getCompletedShipments = async (req, res, next) => {
   try {
-    res.status(200).json({ message: '배송 완료된 발송 내역 반환' });
+    const completed = await getShipmentCompleteView(req, res);
+    res.status(200).json(completed);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: '서버 오류 발생' });
@@ -25,7 +27,8 @@ export const getCompletedShipments = async (req, res, next) => {
 
 export const getShipmentList = async (req, res, next) => {
   try {
-    res.status(200).json({ message: '전체 발송 내역 반환' });
+    const list = await getShipmentListView(req, res);
+    res.status(200).json(list);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: '서버 오류 발생' });
@@ -34,7 +37,8 @@ export const getShipmentList = async (req, res, next) => {
 
 export const getShipmentDetail = async (req, res, next) => {
   try {
-    res.status(200).json({ message: '단건 발송 조회 (보류 상태)' });
+    const detail = await getShipmentDetailView(req, res);
+    res.status(200).json(detail);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: '서버 오류 발생' });
@@ -43,7 +47,8 @@ export const getShipmentDetail = async (req, res, next) => {
 
 export const registerShipment = async (req, res, next) => {
   try {
-    res.status(200).json({ message: '배송 정보 등록 완료' });
+    const shipmentInfo = await postShipment(req);
+    res.status(200).json(shipmentInfo);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: '서버 오류 발생' });
@@ -78,7 +83,7 @@ export const getPointHistory = async (req, res, next) => {
     const result = await getOwnerPointHistory(req, res);
     res.status(200).json(result);
   } catch (err) {
-    console.error(err); 
+    console.error(err);
     const statusCode = err.status || 500;
     res.status(statusCode).json({ message: err.message || '서버 오류 발생' });
   }
