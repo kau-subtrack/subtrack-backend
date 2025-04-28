@@ -13,10 +13,12 @@ async function main() {
   // 1. 구독제 생성
   await prisma.subscriptionPlan.createMany({
     data: [
-      { name: '베이직', price: 10000 },
-      { name: '스탠다드', price: 20000 },
-      { name: '프리미엄', price: 30000 },
-      { name: '엔터프라이즈', price: 50000 }
+      { id: 1, name: 'Lite', price: 300000, grantedPoint: 300 },
+      { id: 2, name: 'Lite Plus', price: 400000, grantedPoint: 400 },
+      { id: 3, name: 'Standard', price: 500000, grantedPoint: 500 },
+      { id: 4, name: 'Standard Plus', price: 700000, grantedPoint: 720 },
+      { id: 5, name: 'Premium', price: 950000, grantedPoint: 1000 },
+      { id: 6, name: 'Premium Plus', price: 1200000, grantedPoint: 1260 }
     ],
     skipDuplicates: true
   })
@@ -67,7 +69,7 @@ async function main() {
           userType: 'OWNER',
           isApproved: true,
           subscriptionPlan: {
-            connect: { name: '베이직' }
+            connect: { id: 1 }
           },
           storeInfo: {
             create: {
@@ -82,7 +84,7 @@ async function main() {
             create: {
               amount: 10000,
               reason: '초기 지급',
-              type: 'CHARGE'
+              type: 'CHARGE' // 또는 'USE'
             }
           }
         }
