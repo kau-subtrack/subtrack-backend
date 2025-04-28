@@ -22,7 +22,7 @@ router.post('/points/charge', jwtMiddleware, chargePoints); // 추가 결제하�
 router.get('/points/history', jwtMiddleware, getPointHistory); // (보류 상태)사용 이력 조회
 
 // 마이페이지
-router.post('/my-page', updateStoreInfo); // 가게 정보 수정하기
-router.post('/my-page/change-password', changePassword); // 비밀번호 수정하기
+router.patch('/my-page/change-storeInfo', jwtMiddleware, updateStoreInfo); // 가게 정보 수정하기
+router.patch('/my-page/change-password', jwtMiddleware, changePassword); // 비밀번호 수정하기
 
 export default router;

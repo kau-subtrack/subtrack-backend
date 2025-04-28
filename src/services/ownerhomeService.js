@@ -20,7 +20,7 @@ export const getOwnerHome = async (req, res) => {
 
     //const [driver] = await pool.query('SELECT SubstriptionPlan FROM DriverInfo WHERE userId = ?', [userId]);
     
-    const [store] = await pool.query('SELECT address, latitude, longitude FROM StoreInfo WHERE userId = ?', [userId]);
+    const [store] = await pool.query('SELECT address, detailAddress, latitude, longitude FROM StoreInfo WHERE userId = ?', [userId]);
 
     //json 양식 
     return {
