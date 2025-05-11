@@ -19,7 +19,7 @@ router.post('/shipment/register', registerShipment); // 배송 정보 입력
 // 구독/포인트
 router.post('/points/subscribe', jwtMiddleware, subscribePlan); // 구독하기
 router.post('/points/charge', jwtMiddleware, chargePoints); // 추가 결제하기
-router.get('/points/history', jwtMiddleware, getPointHistory); // (보류 상태)사용 이력 조회
+router.get('/points/history', jwtMiddleware, getPointHistory); // 사용 이력 조회
 
 // 마이페이지
 router.patch('/my-page/change-storeInfo', jwtMiddleware, updateStoreInfo); // 가게 정보 수정하기

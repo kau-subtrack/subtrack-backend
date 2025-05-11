@@ -1,10 +1,9 @@
+import { getOwnerHome } from "../services/owner/ownerhomeService.js";
+import { postShipment, getShipmentListView, getShipmentDetailView, getShipmentCompleteView } from "../services/owner/ownershipmentService.js";
+import { subscribeOwnerPlan, chargeOwnerPoints, getOwnerPointHistory  } from "../services/owner/ownerPointService.js";
+import { updateOwnerStoreInfo, changeOwnerPassword } from "../services/owner/ownerMypageService.js";
 
 // 홈
-import { getOwnerHome } from "../services/ownerhomeService.js";
-import {postShipment, getShipmentListView, getShipmentDetailView, getShipmentCompleteView} from "../services/ownershipmentService.js";
-import { subscribeOwnerPlan, chargeOwnerPoints, getOwnerPointHistory  } from "../services/ownerPointService.js";
-import { updateOwnerStoreInfo, changeOwnerPassword } from "../services/ownerMypageService.js";
-
 export const getHomeInfo = async (req, res, next) => {
   try {
     const homeInfo = await getOwnerHome(req, res);

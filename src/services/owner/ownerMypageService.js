@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import { pool } from "../config/db.js";
+import { pool } from "../../config/db.js";
 import bcrypt from 'bcrypt';
 
 // 마이페이지 - 가게 정보 수정
