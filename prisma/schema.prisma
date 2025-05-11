@@ -13,9 +13,12 @@ enum UserType {
 }
 
 enum DeliveryStatus {
-  PENDING // 수거 전
-  IN_PROGRESS // 배송 중
-  COMPLETED // 배송 완료
+  PENDING_PICKUP       // 수거 전
+  IN_PICKUP            // 수거 중
+  PICKUP_COMPLETED     // 수거 완료
+  PENDING_DELIVERY     // 배송 전
+  IN_DELIVERY          // 배송 중
+  DELIVERY_COMPLETED   // 배송 완료
 }
 
 enum DocumentType {
@@ -28,8 +31,15 @@ enum PointTransactionType {
   USE     // 사용
 }
 
+enum ParcelSize {
+  SMALL // 소
+  MEDIUM // 중
+  LARGE // 대
+  XLARGE // 특대
+}
+
 model User {
-  // 🧍 공통 필드
+  // 공통 사용자 정보
   id         Int      @id @default(autoincrement()) // MySQL 고유 ID
   email      String   @unique // 로그인용 이메일 (중복 불가)
   password   String // 해싱된 비밀번호
@@ -37,7 +47,6 @@ model User {
   userType   UserType // 사용자 유형 (OWNER | DRIVER)
   isApproved Boolean  @default(false) // 관리자의 승인 여부
   createdAt  DateTime @default(now()) // 생성 시각
-  
 
   // 소상공인(OWNER) 전용
   storeInfo          StoreInfo?
@@ -45,13 +54,20 @@ model User {
   subscriptionPlanId Int? // 구독제 ID
   ownedParcels       Parcel[]           @relation("OwnerDetails") // 소상공인이 보낸 소포들
   points             PointTransaction[] // 포인트 충전 및 사용 내역
-  pointBalance      Int      @default(0)   // 보유 포인트
-  defaultPickupDate String? // 사용자가 처음 설정한 수거 희망 요일 (ex: "월", "수")
+  pointBalance       Int      @default(0) // 보유 포인트
+  defaultPickupDate  String? // 사용자가 처음 설정한 수거 희망 요일 (ex: "월", "수")
+  avgParcelPerMonth  Int? // 최근 2~3개월 평균 발송 건수
+  subscribedAt       DateTime? // 구독 시작일
+  expiredAt          DateTime? // 구독 만료일
 
   // 배송기사(DRIVER) 전용
-  driverInfo       DriverInfo?
-  deliveredParcels Parcel[]         @relation("DriverDetails") // 기사에게 배정된 소포들
-  documents        DocumentUpload[] // 자격증/경력 등 제출된 서류들
+  driverInfo         DriverInfo?
+  deliveredParcels   Parcel[]     @relation("DeliveryDriver") // 배송 기사로 배정된 소포들
+  pickedUpParcels    Parcel[]     @relation("PickupDriver") // 수거 기사로 배정된 소포들
+  documents          DocumentUpload[] // 자격증/경력 등 제출된 서류들
+
+  // 챗봇
+  chatbotLogs        ChatbotLog[] // 챗봇 로그
 }
 
 model StoreInfo {
@@ -62,28 +78,28 @@ model StoreInfo {
   detailAddress    String // 사용자 입력 상세 주소 (4층 402호 등)
   expectedSize     String // 예상 택배 크기 (소형/중형/대형 등)
   monthlyCount     Int // 월 평균 택배 수량
-  latitude       Float?  // 지도용 위도
-  longitude      Float?  // 지도용 경도
-  pickupPreference String  // 수거 희망 요일 (ex: 월, 수) → 배열 제거 (MySQL은 기본적으로 배열 지원 X)
+  latitude         Float? // 지도용 위도
+  longitude        Float? // 지도용 경도
+  pickupPreference String // 수거 희망 요일 (ex: 월, 수)
 }
 
 model DriverInfo {
   id             Int    @id @default(autoincrement()) // 고유 ID
   user           User   @relation(fields: [userId], references: [id]) // 연결된 배송기사 유저
   userId         Int    @unique // 유저 ID
-  phoneNumber   String  // 기사 전화번호
-  vehicleNumber String  // 기사 차량번호
-  regionCity     String // 담당 시 (서울시 등)
-  regionDistrict String // 담당 구 (강남구 등)
+  phoneNumber    String  // 기사 전화번호
+  vehicleNumber  String  // 기사 차량번호
+  regionCity     String  // 담당 시 (서울시 등)
+  regionDistrict String  // 담당 구 (강남구 등)
 }
 
 model DocumentUpload {
-  id         Int          @id @default(autoincrement()) // 고유 ID
-  user       User         @relation(fields: [userId], references: [id]) // 업로드한 사용자
+  id         Int      @id @default(autoincrement()) // 고유 ID
+  user       User     @relation(fields: [userId], references: [id]) // 업로드한 사용자
   userId     Int // 유저 ID
   type       DocumentType // 서류 종류 (LICENSE, CAREER)
   fileUrl    String // S3 등 외부 파일 URL
-  uploadedAt DateTime     @default(now()) // 업로드 시각
+  uploadedAt DateTime @default(now()) // 업로드 시각
 }
 
 model PointTransaction {
@@ -91,40 +107,65 @@ model PointTransaction {
   user      User     @relation(fields: [userId], references: [id]) // 대상 사용자
   userId    Int // 유저 ID
   amount    Int // 포인트 변화량 (+충전, -사용)
-  type PointTransactionType // 충전 or 사용 여부
+  type      PointTransactionType // 충전 or 사용 여부
   reason    String // 사유 또는 설명
   createdAt DateTime @default(now()) // 생성 시각
   expiredAt DateTime? // 소멸 정책 적용 시 참고용
 }
 
 model SubscriptionPlan {
-  id        Int     @id // Id는 1, 2, 3, 4, 5, 6 예정
-  name      String  @unique // 구독제 이름 (Lite, Premium Plus 등)
-  price     Int // 가격
-  grantedPoint Int // 획득 금액
-  createdAt DateTime @default(now()) // 등록 시각
-  users     User[] // 이 요금제를 사용하는 유저들
+  id            Int       @id // Id는 1, 2, 3, 4, 5, 6 예정
+  name          String    @unique // 구독제 이름 (Lite, Premium Plus 등)
+  price         Int // 가격
+  grantedPoint  Int // 획득 포인트
+  createdAt     DateTime @default(now()) // 등록 시각
+  users         User[] // 이 요금제를 사용하는 유저들
 }
 
 model Parcel {
-  id               Int             @id @default(autoincrement()) // 고유 ID
-  owner            User            @relation("OwnerDetails", fields: [ownerId], references: [id]) // 발송자 (OWNER)
+  id               Int      @id @default(autoincrement()) // 고유 ID
+
+  // 소유자(발송자)
+  owner            User     @relation("OwnerDetails", fields: [ownerId], references: [id]) // 발송자 (OWNER)
   ownerId          Int // 발송자 유저 ID
-  driver           User?           @relation("DriverDetails", fields: [driverId], references: [id]) // 배송 기사
-  driverId         Int?
 
-  productName      String // 제품명 (나이키 운동화 등)
-  size             String // 택배 크기 (소/중/대/특대 등)
-  caution          Boolean @default(false) // 파손주의 여부
-  recipientName    String // 수령인 이름
-  recipientPhone   String // 수령인 전화번호
-  recipientAddr    String // 수령인 주소
-  detailAddress    String? // 수령인 상세 주소
-  trackingCode     String? @unique // 운송장 번호 (고유) — 생성 시에는 없어도 됨
+  // 수거 기사 정보
+  pickupDriver     User?    @relation("PickupDriver", fields: [pickupDriverId], references: [id])
+  pickupDriverId   Int?
 
-  status           DeliveryStatus  @default(PENDING) // 배송 상태 (PENDING, IN_PROGRESS, COMPLETED)
-  pickupDate DateTime? // 실제 수거 예정일 (선택적 필드)
-  completedAt      DateTime? // 배송 완료 시각
-  deliveryImageUrl String          @default("") // 인증 사진 S3 URL
-  createdAt  DateTime @default(now()) // 소포 등록 시각
+  // 배송 기사 정보
+  deliveryDriver   User?    @relation("DeliveryDriver", fields: [deliveryDriverId], references: [id])
+  deliveryDriverId Int?
+
+  // 배송 정보
+  productName         String   // 제품명 (나이키 운동화 등)
+  size                ParcelSize // 택배 크기 (소/중/대/특대 등)
+  caution             Boolean @default(false) // 파손주의 여부
+  recipientName       String // 수령인 이름
+  recipientPhone      String // 수령인 전화번호
+  recipientAddr       String // 수령인 주소
+  detailAddress       String? // 수령인 상세 주소
+  trackingCode        String? @unique // 운송장 번호 (고유) — 생성 시에는 없어도 됨
+
+  // 상태 및 시간 관련
+  status              DeliveryStatus  @default(PENDING_PICKUP) // 수거/배송 상태 (수거/배송 전, 중, 완료)
+  pickupDate          DateTime? // 실제 수거 예정일 (선택적 필드)
+  pickupCompletedAt   DateTime? // 수거 완료 시각
+  deliveryCompletedAt DateTime? // 배송 완료 시각
+  createdAt           DateTime @default(now()) // 소포 등록 시각
+
+  // 시간대 정보
+  pickupTimeWindow    String?   // 수거 시간대 표시 (예: 오전 10:00 - 12:00)
+  deliveryTimeWindow  String?   // 배송 시간대 표시 (예: 오후 1:00 - 3:00)
+
+  // 인증 정보
+  deliveryImageUrl    String   @default("") // 배송 완료 인증 사진 S3 URL
+}
+
+model ChatbotLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  endpoint  String   // 어떤 기능을 요청했는지
+  createdAt DateTime @default(now()) // 챗봇 사용 시작 시간
 }
