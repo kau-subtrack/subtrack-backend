@@ -1,5 +1,5 @@
 import express from 'express';
-import { getHomeInfo, getPickUpList, patchPickUp, getDeliveryList, patchDelivery, getRouteInfo, postRouteRequest } from "../controllers/driverControllers.js";
+import { getHomeInfo, getPickUpList, patchPickUp, getDeliveryList, patchDelivery, /*getRouteInfo, postRouteRequest*/ } from "../controllers/driverControllers.js";
 import { jwtMiddleware } from '../middlewares/jwtMiddleware.js';  // 필요 시 추가
 
 const router = express.Router();
@@ -7,7 +7,7 @@ const router = express.Router();
 router.use(jwtMiddleware);  // 전체 인증 필요 시 사용
 
 // 홈
-router.get('/home', getHomeInfo); // 홈 화면 정보
+router.get('/home', jwtMiddleware, getHomeInfo); // 홈 화면 정보
 
 // 수거
 router.get('/pick-up', getPickUpList); // 수거 정보 조회
