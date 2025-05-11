@@ -147,9 +147,11 @@ model Parcel {
   detailAddress       String? // 수령인 상세 주소
   trackingCode        String? @unique // 운송장 번호 (고유) — 생성 시에는 없어도 됨
 
+
   // 상태 및 시간 관련
   status              DeliveryStatus  @default(PENDING_PICKUP) // 수거/배송 상태 (수거/배송 전, 중, 완료)
-  pickupDate          DateTime? // 실제 수거 예정일 (선택적 필드)
+  pickupScheduledDate    DateTime? // 수거 예정일 - 등록 이후에 확정
+  deliveryScheduledDate  DateTime? // 배송 예정일 - 등록 이후에 확정
   pickupCompletedAt   DateTime? // 수거 완료 시각
   deliveryCompletedAt DateTime? // 배송 완료 시각
   createdAt           DateTime @default(now()) // 소포 등록 시각

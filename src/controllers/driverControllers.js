@@ -10,6 +10,11 @@ export const getHomeInfo = async (req, res, next) => {
     res.status(200).json({ status: true, data });
   } catch (err) {
     console.error(err);
+
+    if (err.message === "등록된 기사 정보가 없습니다.") {
+      return res.status(404).json({ status: false, message: err.message });
+    }
+
     res.status(500).json({ status: false, message: "서버 오류 발생" });
   }
 };
