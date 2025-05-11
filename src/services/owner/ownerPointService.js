@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import { pool } from '../config/db.js';
+import { pool } from '../../config/db.js';
 
 export const subscribeOwnerPlan = async (req) => {
   const { planId } = req.body;
