@@ -137,6 +137,13 @@ model Parcel {
   deliveryDriver   User?    @relation("DeliveryDriver", fields: [deliveryDriverId], references: [id])
   deliveryDriverId Int?
 
+  // 다음 대상 여부
+  isNextPickupTarget      Boolean   @default(false) // 다음 수거 대상 여부
+  isNextDeliveryTarget    Boolean   @default(false) // 다음 배송 대상 여부
+
+  // OWNER 삭제 요청 여부
+  isDeleted Boolean @default(false)
+
   // 배송 정보
   productName         String   // 제품명 (나이키 운동화 등)
   size                ParcelSize // 택배 크기 (소/중/대/특대 등)
