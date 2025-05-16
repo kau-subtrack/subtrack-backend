@@ -1,5 +1,5 @@
 import { getOwnerHome } from "../services/owner/ownerhomeService.js";
-import { postShipment, getShipmentListView, getShipmentDetailView, getShipmentCompleteView } from "../services/owner/ownershipmentService.js";
+import { postShipment, getShipmentListView, getShipmentDetailView, getShipmentCompleteView, softDeleteShipment } from "../services/owner/ownershipmentService.js";
 import { subscribeOwnerPlan, chargeOwnerPoints, getOwnerPointHistory  } from "../services/owner/ownerPointService.js";
 import { updateOwnerStoreInfo, changeOwnerPassword } from "../services/owner/ownerMypageService.js";
 
@@ -49,6 +49,16 @@ export const registerShipment = async (req, res, next) => {
   try {
     const shipmentInfo = await postShipment(req);
     res.status(200).json(shipmentInfo);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: '서버 오류 발생' });
+  }
+};
+
+export const deleteShipment = async (req, res, next) => {
+  try {
+    const result = await softDeleteShipment(req, res);  // req에서 직접 추출
+    res.status(200).json(result);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: '서버 오류 발생' });

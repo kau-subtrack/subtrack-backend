@@ -18,7 +18,7 @@ export const getShipmentListView = async (req) => {
 
     //날짜기준 배송리스트 조회
     const [result] = await pool.query(
-        'SELECT trackingCode, status FROM Parcel WHERE ownerId = ? AND DATE(createdAt) = ?',
+        'SELECT trackingCode, status FROM Parcel WHERE ownerId = ? AND DATE(createdAt) = ? AND isDeleted = false',
         [userId, time]
     );
 
@@ -79,7 +79,10 @@ export const getShipmentDetailView = async (req) => {
 
 // 단건 배송 화면
 export const postShipment = async (req) => {
-  const { productName, recipientName, recipientPhone, recipientAddr, detailAddress, size, caution, pickupDate } = req.body;
+  const {
+    productName, recipientName, recipientPhone,
+    recipientAddr, detailAddress, size, caution, pickupScheduledDate
+  } = req.body;
 
   if (!productName || !recipientName || !recipientPhone || !recipientAddr || !detailAddress || !size) {
     throw new Error('필수 항목 누락');
@@ -87,31 +90,67 @@ export const postShipment = async (req) => {
 
   try {
     const userId = req.userId;
+    const trackingCode = generateTrackingCode(); // 고유 송장번호 생성
 
-    //trackingcode 송장번호 고유 기입 - 수거시 생성
-    //parcel 단건 배송정보 입력
     const [result] = await pool.query(
-        'INSERT INTO Parcel ( ownerid, productName, size, caution, recipientname, recipientPhone, recipientAddr, detailAddress, pickupDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [userId, productName, size, caution, recipientName, recipientPhone, recipientAddr, detailAddress, pickupDate]
+      'INSERT INTO Parcel (ownerId, trackingCode, productName, size, caution, recipientName, recipientPhone, recipientAddr, detailAddress, pickupScheduledDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [userId, trackingCode, productName, size, caution, recipientName, recipientPhone, recipientAddr, detailAddress, pickupScheduledDate]
     );
 
-    //포인트 양식
     const spoints = s2point(size);
     const type = 'USE';
 
-    //포인트 충분 조건 확인. 추후 추가.
-
-
-    //소모 포인트 테이블 입력
     await pool.query(
-        'INSERT INTO PointTransaction ( userid, amount, type, reason ) VALUES (?, ?, ?, ?)',
-        [userId, spoints, type, "배송" ]
+      'INSERT INTO PointTransaction (userId, amount, type, reason) VALUES (?, ?, ?, ?)',
+      [userId, spoints, type, "배송"]
     );
 
-    //json 양식
-    return { status: true, message: '배송 정보가 등록되었습니다.', parcelId: result.insertId, usedPoints: spoints  };
+    return {
+      status: true,
+      message: '배송 정보가 등록되었습니다.',
+      parcelId: result.insertId,
+      trackingCode,
+      usedPoints: spoints
+    };
   } catch (err) {
     console.error(err);
-    throw new Error('유효하지 않습니다.'); //오류 분류 추후 수정
+    throw new Error('유효하지 않습니다.');
   }
 };
+
+// 삭제 요청(soft delete)
+export const softDeleteShipment = async (req, res) => {
+  const { trackingCode } = req.body;
+  const userId = req.userId;
+
+  if (!trackingCode) {
+    return { status: false, message: "운송장 번호가 누락되었습니다." };
+  }
+
+  const [rows] = await pool.query(
+    'SELECT id FROM Parcel WHERE trackingCode = ? AND ownerId = ? AND isDeleted = false',
+    [trackingCode, userId]
+  );
+
+  if (rows.length === 0) {
+    return { status: false, message: "운송장을 찾을 수 없거나 접근 권한이 없습니다." };
+  }
+
+  await pool.query(
+    'UPDATE Parcel SET isDeleted = true WHERE trackingCode = ? AND ownerId = ?',
+    [trackingCode, userId]
+  );
+
+  return {
+    status: true,
+    message: "삭제 요청이 정상 처리되었습니다.",
+    data: { trackingCode }
+  };
+};
+
+// 송장번호 생성기
+function generateTrackingCode() {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const random = Math.random().toString(36).substr(2, 6).toUpperCase();
+  return `PKG-${date}-${random}`;
+}
