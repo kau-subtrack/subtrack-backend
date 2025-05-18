@@ -31,7 +31,6 @@ export const getDriverPickupList = async (req) => {
       isNextPickupTarget: Boolean(p.isNextPickupTarget)
     }));
   } catch (err) {
-    console.error(err);
     throw new Error("서버 오류 발생");
   }
 };
@@ -49,7 +48,7 @@ export const completeDriverPickup = async (req) => {
   try {
     // 권한 및 유효성 확인
     const [parcels] = await pool.query(
-      `SELECT id FROM Parcel
+      `SELECT id, status FROM Parcel
        WHERE ownerId = ? AND pickupDriverId = ? AND DATE(pickupScheduledDate) = CURDATE() AND isDeleted = false`,
       [ownerId, driverId]
     );
@@ -57,6 +56,13 @@ export const completeDriverPickup = async (req) => {
     if (parcels.length === 0) {
       const error = new Error('해당 가게의 수거 대상이 없거나 권한이 없습니다.');
       error.status = 404;
+      throw error;
+    }
+
+    // PICKUP_PENDING인지 체크
+    if (parcels.every(p => p.status !== 'PICKUP_PENDING')) {
+      const error = new Error('이미 완료된 수거입니다.');
+      error.status = 400;
       throw error;
     }
 
@@ -91,7 +97,7 @@ export const completeDriverPickup = async (req) => {
 
     return updated[0];
   } catch (err) {
-    console.error(err);
+    if (err.status) throw err; // 400/404 같은 사용자 에러는 그대로 rethrow
     const error = new Error("서버 오류 발생");
     error.status = 500;
     throw error;
