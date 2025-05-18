@@ -46,7 +46,7 @@ export const completePickup = async (req, res, next) => {
 // 배송 화면
 export const getDeliveryList = async (req, res, next) => {
   try {
-    const data = await getDeliveryInfo(req);
+    const data = await getDriverDeliveryList(req);
     res.status(200).json({ status: true, data });
   } catch (err) {
     console.error(err);
@@ -54,14 +54,16 @@ export const getDeliveryList = async (req, res, next) => {
   }
 };
 
-export const patchDelivery = async (req, res, next) => {
+export const completeDelivery = async (req, res, next) => {
   try {
-    const { trackingCode } = req.params;
-    const data = await updateDeliveryInfo(req, trackingCode);
+    const data = await completeDriverDelivery(req);
     res.status(200).json({ status: true, data });
   } catch (err) {
     console.error(err);
-    res.status(err.status || 500).json({ status: false, message: err.message || "서버 오류 발생" });
+    res.status(err.status || 500).json({
+      status: false,
+      message: err.message || "서버 오류 발생",
+    });
   }
 };
 
