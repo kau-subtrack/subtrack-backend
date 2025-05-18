@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { pool } from "../../config/db.js";
 
-export const getDeliveryInfo = async (req) => {
+export const getDriverDeliveryList = async (req) => {
   try {
     // TODO: 기사 배송 목록 조회
     return [];
@@ -12,7 +12,7 @@ export const getDeliveryInfo = async (req) => {
   }
 };
 
-export const updateDeliveryInfo = async (req, trackingCode) => {
+export const completeDriverDelivery = async (req, trackingCode) => {
   try {
     // TODO: trackingCode에 해당하는 배송 상태 업데이트
     return {
