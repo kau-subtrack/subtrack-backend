@@ -12,12 +12,10 @@ enum UserType {
   DRIVER // 배송기사
 }
 
-enum DeliveryStatus {
-  PENDING_PICKUP       // 수거 전
-  IN_PICKUP            // 수거 중
+enum ParcelStatus {
+  PICKUP_PENDING       // 수거 전
   PICKUP_COMPLETED     // 수거 완료
-  PENDING_DELIVERY     // 배송 전
-  IN_DELIVERY          // 배송 중
+  DELIVERY_PENDING     // 배송 전
   DELIVERY_COMPLETED   // 배송 완료
 }
 
@@ -156,7 +154,7 @@ model Parcel {
 
 
   // 상태 및 시간 관련
-  status              DeliveryStatus  @default(PENDING_PICKUP) // 수거/배송 상태 (수거/배송 전, 중, 완료)
+  status              ParcelStatus  @default(PICKUP_PENDING) // 수거/배송 상태 (수거/배송 전, 중, 완료)
   pickupScheduledDate    DateTime? // 수거 예정일 - 등록 이후에 확정
   deliveryScheduledDate  DateTime? // 배송 예정일 - 등록 이후에 확정
   pickupCompletedAt   DateTime? // 수거 완료 시각
