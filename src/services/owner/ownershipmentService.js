@@ -4,7 +4,7 @@ import { pool } from '../../config/db.js';
 import {s2point} from "../../config/sizeToPoint.js";
 import {pad} from "../../config/pad.js";
 
-// get 배송 당일 내역
+// get 배송 전체 내역
 export const getShipmentListView = async (req) => {
   //기본 금일 날짜
   const [syear, smonth, sday] = new Date(+new Date() + 3240 * 10000).toISOString().split("T")[0].split('-');
@@ -17,9 +17,9 @@ export const getShipmentListView = async (req) => {
     //ex)2025-04-21  day까지만 확인
     const time = year + '-' + pad(month) + '-' + pad(day);
 
-    //날짜기준 배송리스트 조회 pickupScheduledDate/isDeleted = false
+    //날짜기준 배송리스트 조회
     const [result] = await pool.query(
-        "SELECT trackingCode, recipientName, recipientAddr, detailAddress, productName, status, deliveryCompletedAt, pickupScheduledDate, size FROM Parcel WHERE ownerId = ? AND DATE_FORMAT(pickupScheduledDate, '%Y-%m') = ? AND isDeleted = false",
+        'SELECT trackingCode, recipientName, recipientAddr, detailAddress, productName, status, deliveryCompletedAt, pickupScheduledDate, size FROM Parcel WHERE ownerId = ? AND DATE(pickupScheduledDate) = ?',
         [userId, time]
     );
 
@@ -33,7 +33,6 @@ export const getShipmentListView = async (req) => {
 
 
 // get 배송 완료 내역
-/// !!! 배송 기준이 완료 시점이 아닌, pickupdate 기준. 월간 전부 조회로 변경된 상태.
 export const getShipmentCompleteView = async (req) => {
   //기본 금일 날짜
   const [syear, smonth, sday] = new Date(+new Date() + 3240 * 10000).toISOString().split("T")[0].split('-');
@@ -93,7 +92,7 @@ export const postShipment = async (req) => {
   try {
     const userId = req.userId;
     const trackingCode = generateTrackingCode(); // 고유 송장번호 생성
-    
+
     const [result] = await pool.query(
       'INSERT INTO Parcel (ownerId, trackingCode, productName, size, caution, recipientName, recipientPhone, recipientAddr, detailAddress, pickupScheduledDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [userId, trackingCode, productName, size, caution, recipientName, recipientPhone, recipientAddr, detailAddress, pickupScheduledDate]
