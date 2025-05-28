@@ -1,11 +1,39 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import { pool } from "../../config/db.js";
+import axios from 'axios';
+
+const AI_HOST = process.env.AI_HOST;
 
 export const getDriverPickupList = async (req) => {
   const driverId = req.userId;
 
   try {
+    // 1. AI 서버에 다음 목적지 조회 요청
+    const { data } = await axios.get(`${AI_HOST}/api/pickup/next/${driverId}`);
+
+    if (data?.status === 'success' && data?.next_destination?.parcel_id) {
+      const nextParcelId = data.next_destination.parcel_id;
+
+      // 2. 해당 기사 전체 isNextPickupTarget false로 초기화
+      await pool.query(
+        `UPDATE Parcel 
+         SET isNextPickupTarget = false 
+         WHERE pickupDriverId = ? 
+           AND DATE(pickupScheduledDate) = CURDATE()
+           AND isDeleted = false`,
+        [driverId]
+      );
+
+      // 3. AI가 지정한 parcelId만 true로
+      await pool.query(
+        `UPDATE Parcel 
+         SET isNextPickupTarget = true 
+         WHERE id = ?`,
+        [nextParcelId]
+      );
+    }
+
     const [parcels] = await pool.query(
       `SELECT
          p.ownerId,
@@ -59,7 +87,6 @@ export const completeDriverPickup = async (req) => {
       throw error;
     }
 
-    // PICKUP_PENDING인지 체크
     if (parcels.every(p => p.status !== 'PICKUP_PENDING')) {
       const error = new Error('이미 완료된 수거입니다.');
       error.status = 400;
@@ -76,6 +103,24 @@ export const completeDriverPickup = async (req) => {
       [ownerId, driverId]
     );
 
+    // AI에 수거 완료 보고 (모든 pending인 parcelId에 대해 개별 호출)
+    const pendingParcels = parcels.filter(p => p.status === 'PICKUP_PENDING');
+
+    await Promise.all(
+      pendingParcels.map(({ id }) =>
+        axios.post(`${process.env.AI_HOST}/api/pickup/complete`, { parcelId: id })
+          .catch(err => {
+            console.warn(`AI 서버 호출 실패 - parcelId: ${id}`, err.message);
+          })
+      )
+    );
+
+    // 전체 완료 여부 확인
+    const { data } = await axios.get(`${process.env.AI_HOST}/api/pickup/all-completed`);
+    if (data.completed) {
+      console.log('🎉 모든 수거 완료 → 배달 전환됨');
+    }
+
     // 응답용 요약 정보
     const [updated] = await pool.query(
       `SELECT
@@ -86,10 +131,7 @@ export const completeDriverPickup = async (req) => {
          COUNT(id) AS parcelCount,
          'PICKUP_COMPLETED' AS status
        FROM Parcel
-       WHERE ownerId = ?
-         AND pickupDriverId = ?
-         AND DATE(pickupScheduledDate) = CURDATE()
-         AND isDeleted = false
+       WHERE ownerId = ? AND pickupDriverId = ? AND DATE(pickupScheduledDate) = CURDATE() AND isDeleted = false
        GROUP BY ownerId
        LIMIT 1`,
       [ownerId, driverId]
@@ -97,8 +139,8 @@ export const completeDriverPickup = async (req) => {
 
     return updated[0];
   } catch (err) {
-    if (err.status) throw err; // 400/404 같은 사용자 에러는 그대로 rethrow
-    const error = new Error("서버 오류 발생");
+    if (err.status) throw err;
+    const error = new Error('서버 오류 발생');
     error.status = 500;
     throw error;
   }

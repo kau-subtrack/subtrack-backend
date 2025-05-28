@@ -1,8 +1,9 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import { pool } from '../../config/db.js';
-import {s2point} from "../../config/sizeToPoint.js";
-import {pad} from "../../config/pad.js";
+import { s2point } from "../../config/sizeToPoint.js";
+import { pad } from "../../config/pad.js";
+import { sendPickupWebhook } from '../ai/index.js';
 
 // get 배송 전체 내역
 export const getShipmentListView = async (req) => {
@@ -84,6 +85,7 @@ export const postShipment = async (req) => {
     productName, recipientName, recipientPhone,
     recipientAddr, detailAddress, size, caution, pickupScheduledDate
   } = req.body;
+  console.log(`ownerId: ${req.userId}`);
 
   if (!productName || !recipientName || !recipientPhone || !recipientAddr || !detailAddress || !size) {
     throw new Error('필수 항목 누락');
@@ -93,11 +95,23 @@ export const postShipment = async (req) => {
     const userId = req.userId;
     const trackingCode = generateTrackingCode(); // 고유 송장번호 생성
 
+    // pickupScheduledDate 자동 설정
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    const scheduledDate = new Date();
+    if (currentHour >= 7) {
+      // 07시 이후면 내일 날짜로
+      scheduledDate.setDate(scheduledDate.getDate() + 1);
+    }
+    const pickupScheduledDate = scheduledDate.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+
     const [result] = await pool.query(
       'INSERT INTO Parcel (ownerId, trackingCode, productName, size, caution, recipientName, recipientPhone, recipientAddr, detailAddress, pickupScheduledDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [userId, trackingCode, productName, size, caution, recipientName, recipientPhone, recipientAddr, detailAddress, pickupScheduledDate]
     );
-
+    
+    const parcelId = result.insertId;
     const spoints = s2point(size);
     const type = 'USE';
 
@@ -105,11 +119,14 @@ export const postShipment = async (req) => {
       'INSERT INTO PointTransaction (userId, amount, type, reason) VALUES (?, ?, ?, ?)',
       [userId, spoints, type, "배송"]
     );
+    
+    // AI 서버에 수거 요청 webhook 호출
+    await sendPickupWebhook(parcelId);
 
     return {
       status: true,
       message: '배송 정보가 등록되었습니다.',
-      parcelId: result.insertId,
+      parcelId,
       trackingCode,
       usedPoints: spoints
     };

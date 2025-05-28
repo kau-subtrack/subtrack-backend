@@ -11,10 +11,10 @@ router.use(jwtMiddleware);  // 전체 인증 필요 시 사용
 router.get('/home', getHomeInfo); // 홈 화면 정보
 
 // 발송
-router.get('/shipment-history/completed', getCompletedShipments); // 배송완료된 등록 내역
-router.get('/shipment/list', getShipmentList); // 전체 발송 내역 조회
-router.get('/shipment/trackingNumber', getShipmentDetail); // (보류 상태) 단건 발송 조회
-router.post('/shipment/register', registerShipment); // 배송 정보 입력 
+router.get('/shipment-history/completed', jwtMiddleware, getCompletedShipments); // 배송완료된 등록 내역
+router.get('/shipment/list', jwtMiddleware, getShipmentList); // 전체 발송 내역 조회
+router.get('/shipment/trackingNumber', jwtMiddleware, getShipmentDetail); // (보류 상태) 단건 발송 조회
+router.post('/shipment/register', jwtMiddleware, registerShipment); // 배송 정보 입력 
 router.patch('/shipment/delete', jwtMiddleware, deleteShipment); // 삭제 요청
 
 // 구독/포인트
