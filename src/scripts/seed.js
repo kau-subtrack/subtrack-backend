@@ -32,7 +32,7 @@ async function main() {
       id: 1,
       email: 'driver1@example.com',
       password: '1234',
-      name: '기사1',
+      name: '수거기사1',
       phoneNumber: '010-0000-0001',
       vehicleNumber: '서울 12가 341',
       regionCity: '서울시',
@@ -42,7 +42,7 @@ async function main() {
       id: 2,
       email: 'driver2@example.com',
       password: '1234',
-      name: '기사2',
+      name: '수거기사2',
       phoneNumber: '010-0000-0002',
       vehicleNumber: '서울 12가 344',
       regionCity: '서울시',
@@ -52,7 +52,7 @@ async function main() {
       id: 3,
       email: 'driver3@example.com',
       password: '1234',
-      name: '기사3',
+      name: '수거기사3',
       phoneNumber: '010-0000-0003',
       vehicleNumber: '서울 12가 343',
       regionCity: '서울시',
@@ -62,7 +62,7 @@ async function main() {
       id: 4,
       email: 'driver4@example.com',
       password: '1234',
-      name: '기사4',
+      name: '수거기사4',
       phoneNumber: '010-0000-0004',
       vehicleNumber: '서울 12가 342',
       regionCity: '서울시',
@@ -72,13 +72,63 @@ async function main() {
       id: 5,
       email: 'driver5@example.com',
       password: '1234',
-      name: '기사5',
+      name: '수거기사5',
       phoneNumber: '010-0000-0005',
       vehicleNumber: '서울 12가 3456',
       regionCity: '서울특별시',
       regionDistrict: '성동구, 광진구, 동대문구, 중랑구, 강동구, 송파구, 강남구, 서초구'
+    },
+    {
+      id: 6,
+      email: 'driver6@example.com',
+      password: '1234',
+      name: '배송기사6',
+      phoneNumber: '010-0000-0006',
+      vehicleNumber: '서울 12가 346',
+      regionCity: '서울시',
+      regionDistrict: '서대문구, 은평구, 마포구'
+    },
+    {
+      id: 7,
+      email: 'driver7@example.com',
+      password: '1234',
+      name: '배송기사7',
+      phoneNumber: '010-0000-0007',
+      vehicleNumber: '서울 12가 347',
+      regionCity: '서울시',
+      regionDistrict: '도봉구, 노원구'
+    },
+    {
+      id: 8,
+      email: 'driver8@example.com',
+      password: '1234',
+      name: '배송기사8',
+      phoneNumber: '010-0000-0008',
+      vehicleNumber: '서울 12가 348',
+      regionCity: '서울시',
+      regionDistrict: '중구, 성동구'
+    },
+    {
+      id: 9,
+      email: 'driver9@example.com',
+      password: '1234',
+      name: '배송기사9',
+      phoneNumber: '010-0000-0009',
+      vehicleNumber: '서울 12가 349',
+      regionCity: '서울시',
+      regionDistrict: '관악구, 금천구, 구로구'
+    },
+    {
+      id: 10,
+      email: 'driver10@example.com',
+      password: '1234',
+      name: '배송기사10',
+      phoneNumber: '010-0000-0010',
+      vehicleNumber: '서울 12가 350',
+      regionCity: '서울시',
+      regionDistrict: '강남구, 송파구'
     }
-  ]
+  ];
 
   for (const driver of driverSeeds) {
     const hashedPassword = await bcrypt.hash(driver.password, 10)
