@@ -100,8 +100,8 @@ export const postShipment = async (req) => {
     const currentHour = now.getHours();
 
     const scheduledDate = new Date();
-    if (currentHour >= 7) {
-      // 07시 이후면 내일 날짜로
+    if (currentHour >= 12) {
+      // 낮 12시 이후면 내일 날짜로
       scheduledDate.setDate(scheduledDate.getDate() + 1);
     }
     const pickupScheduledDate = scheduledDate.toISOString().split('T')[0]; // 'YYYY-MM-DD'
