@@ -83,8 +83,9 @@ export const getShipmentDetailView = async (req) => {
 export const postShipment = async (req) => {
   const {
     productName, recipientName, recipientPhone,
-    recipientAddr, detailAddress, size, caution, pickupScheduledDate
+    recipientAddr, detailAddress, size, caution
   } = req.body;
+
   console.log(`ownerId: ${req.userId}`);
 
   if (!productName || !recipientName || !recipientPhone || !recipientAddr || !detailAddress || !size) {
@@ -95,23 +96,37 @@ export const postShipment = async (req) => {
     const userId = req.userId;
     const trackingCode = generateTrackingCode(); // 고유 송장번호 생성
 
-    // pickupScheduledDate 자동 설정
+    // pickupScheduledDate 및 deliveryScheduledDate 자동 설정
     const now = new Date();
     const currentHour = now.getHours();
 
     const scheduledDate = new Date();
     if (currentHour >= 12) {
-      // 낮 12시 이후면 내일 날짜로
+      // 낮 12시 이후면 내일 날짜로 설정
       scheduledDate.setDate(scheduledDate.getDate() + 1);
     }
-    const pickupScheduledDate = scheduledDate.toISOString().split('T')[0]; // 'YYYY-MM-DD'
 
+    const formattedDate = scheduledDate.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+    const pickupScheduledDate = formattedDate;
+    const deliveryScheduledDate = formattedDate;
+
+    // 배송 정보 등록
     const [result] = await pool.query(
-      'INSERT INTO Parcel (ownerId, trackingCode, productName, size, caution, recipientName, recipientPhone, recipientAddr, detailAddress, pickupScheduledDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [userId, trackingCode, productName, size, caution, recipientName, recipientPhone, recipientAddr, detailAddress, pickupScheduledDate]
+      `INSERT INTO Parcel (
+         ownerId, trackingCode, productName, size, caution,
+         recipientName, recipientPhone, recipientAddr, detailAddress,
+         pickupScheduledDate, deliveryScheduledDate
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId, trackingCode, productName, size, caution,
+        recipientName, recipientPhone, recipientAddr, detailAddress,
+        pickupScheduledDate, deliveryScheduledDate
+      ]
     );
-    
+
     const parcelId = result.insertId;
+
+    // 포인트 차감
     const spoints = s2point(size);
     const type = 'USE';
 
@@ -119,8 +134,8 @@ export const postShipment = async (req) => {
       'INSERT INTO PointTransaction (userId, amount, type, reason) VALUES (?, ?, ?, ?)',
       [userId, spoints, type, "배송"]
     );
-    
-    // AI 서버에 수거 요청 webhook 호출
+
+    // AI 수거 요청 Webhook
     await sendPickupWebhook(parcelId);
 
     return {

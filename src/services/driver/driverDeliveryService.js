@@ -3,20 +3,24 @@ dotenv.config();
 import { pool } from "../../config/db.js";
 import axios from 'axios';
 
+const AI_HOST = process.env.AI_HOST;
+
 export const getDriverDeliveryList = async (req) => {
   const driverId = req.userId;
+  const token = req.headers.authorization;
 
-  // 1. AI 모델에서 다음 목적지 조회
+  if (!token) {
+    throw new Error("AI 요청 토큰 누락");
+  }
+
   try {
-    const response = await axios.get('http://ec2-43-200-131-230.ap-northeast-2.compute.amazonaws.com:5002/api/delivery/next', {
+    const { data } = await axios.get(`${AI_HOST}/api/delivery/next`, {
       headers: {
-        Authorization: `Bearer ${req.token}`, // 필요 시 수정
+        Authorization: token
       }
     });
 
-    const aiData = response.data;
-    
-    // 2. 모든 isNextDeliveryTarget 초기화
+    // 1. 모든 isNextDeliveryTarget false로 초기화
     await pool.query(
       `UPDATE Parcel
        SET isNextDeliveryTarget = false
@@ -26,9 +30,10 @@ export const getDriverDeliveryList = async (req) => {
       [driverId]
     );
 
-    // 3. 다음 목적지 설정 (delivery_id → Parcel.id 라고 가정)
-    if (aiData.status === 'success' && aiData.next_destination?.delivery_id) {
-      const targetId = aiData.next_destination.delivery_id;
+    // 2. 다음 배송 대상이 있으면 true로 설정
+    if (data?.status === 'success' && data?.next_destination?.delivery_id) {
+      const targetId = data.next_destination.delivery_id;
+
       await pool.query(
         `UPDATE Parcel
          SET isNextDeliveryTarget = true
@@ -36,13 +41,8 @@ export const getDriverDeliveryList = async (req) => {
         [targetId, driverId]
       );
     }
-  } catch (error) {
-    console.error('[AI 연동 실패]', error.message);
-    // 실패해도 목록 조회는 계속 진행
-  }
 
-  // 4. 최종 배송 목록 조회
-  try {
+    // 3. 오늘의 배송 목록 조회 (배송 완료 포함)
     const [parcels] = await pool.query(
       `SELECT
          trackingCode,
@@ -56,7 +56,7 @@ export const getDriverDeliveryList = async (req) => {
        WHERE deliveryDriverId = ?
          AND DATE(deliveryScheduledDate) = CURDATE()
          AND isDeleted = false
-         AND status = 'DELIVERY_PENDING'
+         AND (status = 'DELIVERY_PENDING' OR status = 'DELIVERY_COMPLETED')
        ORDER BY isNextDeliveryTarget DESC`,
       [driverId]
     );
@@ -73,9 +73,11 @@ export const getDriverDeliveryList = async (req) => {
       isNextDeliveryTarget: Boolean(p.isNextDeliveryTarget)
     }));
   } catch (err) {
+    console.error('[ERROR] getDriverDeliveryList:', err.message);
     throw new Error("서버 오류 발생");
   }
 };
+
 
 
 export const completeDriverDelivery = async (req) => {

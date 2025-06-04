@@ -7,25 +7,33 @@ const AI_HOST = process.env.AI_HOST;
 
 export const getDriverPickupList = async (req) => {
   const driverId = req.userId;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    throw new Error("AI 요청 토큰 누락");
+  }
 
   try {
-    // 1. AI 서버에 다음 목적지 조회 요청
-    const { data } = await axios.get(`${AI_HOST}/api/pickup/next/${driverId}`);
+    const { data } = await axios.get(`${AI_HOST}/api/pickup/next`, {
+      headers: {
+        Authorization: token
+      }
+    });
 
+    // 모든 isNextPickupTarget 초기화 (어차피 항상 수행)
+    await pool.query(
+      `UPDATE Parcel 
+       SET isNextPickupTarget = false 
+       WHERE pickupDriverId = ? 
+         AND DATE(pickupScheduledDate) = CURDATE()
+         AND isDeleted = false`,
+      [driverId]
+    );
+
+    // AI가 수거 진행 중일 때만 하나를 true로 설정
     if (data?.status === 'success' && data?.next_destination?.parcel_id) {
       const nextParcelId = data.next_destination.parcel_id;
 
-      // 2. 해당 기사 전체 isNextPickupTarget false로 초기화
-      await pool.query(
-        `UPDATE Parcel 
-         SET isNextPickupTarget = false 
-         WHERE pickupDriverId = ? 
-           AND DATE(pickupScheduledDate) = CURDATE()
-           AND isDeleted = false`,
-        [driverId]
-      );
-
-      // 3. AI가 지정한 parcelId만 true로
       await pool.query(
         `UPDATE Parcel 
          SET isNextPickupTarget = true 
@@ -34,23 +42,24 @@ export const getDriverPickupList = async (req) => {
       );
     }
 
+    // 어떤 상태든 항상 오늘자 수거 목록은 출력
     const [parcels] = await pool.query(
       `SELECT
-         p.ownerId,
-         MIN(p.recipientAddr) AS address,
-         MIN(p.detailAddress) AS detailAddress,
-         MIN(p.pickupTimeWindow) AS pickupTimeWindow,
-         MIN(p.productName) AS productName,
-         COUNT(p.id) AS parcelCount,
-         MAX(p.status) AS status,
-         MAX(p.isNextPickupTarget) AS isNextPickupTarget
-       FROM Parcel AS p
-       WHERE p.pickupDriverId = ? 
-         AND DATE(p.pickupScheduledDate) = CURDATE()
-         AND p.isDeleted = false
-         AND p.status = 'PICKUP_PENDING'
-       GROUP BY p.ownerId
-       ORDER BY isNextPickupTarget DESC`,
+        p.ownerId,
+        MIN(p.recipientAddr) AS address,
+        MIN(p.detailAddress) AS detailAddress,
+        MIN(p.pickupTimeWindow) AS pickupTimeWindow,
+        MIN(p.productName) AS productName,
+        COUNT(p.id) AS parcelCount,
+        MAX(p.status) AS status,
+        MAX(p.isNextPickupTarget) AS isNextPickupTarget
+      FROM Parcel AS p
+      WHERE p.pickupDriverId = ? 
+        AND DATE(p.pickupScheduledDate) = CURDATE()
+        AND p.isDeleted = false
+        AND (p.status = 'PICKUP_PENDING' OR p.status = 'PICKUP_COMPLETED')
+      GROUP BY p.ownerId
+      ORDER BY isNextPickupTarget DESC`,
       [driverId]
     );
 
@@ -59,6 +68,7 @@ export const getDriverPickupList = async (req) => {
       isNextPickupTarget: Boolean(p.isNextPickupTarget)
     }));
   } catch (err) {
+    console.error('[ERROR] getDriverPickupList:', err.message);
     throw new Error("서버 오류 발생");
   }
 };
