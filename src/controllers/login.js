@@ -10,8 +10,6 @@ export const login = async (req, res) => {
   const { email, password, userType } = req.body;
 
   try {
-    const connection = await pool.getConnection();
-
     const [users] = await pool.query('SELECT * FROM User WHERE email = ?', [email]);
     if (users.length === 0) {
       return res.status(401).json({ message: '이메일 또는 비밀번호가 잘못되었습니다.' });
