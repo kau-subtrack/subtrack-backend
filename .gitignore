@@ -4,3 +4,30 @@ https/
 .DS_Store
 *.pem
 *.txt
+
+# 환경 변수
+secret.env
+.env
+.env.save
+
+# 캐시
+__pycache__/
+*.pyc
+.DS_Store
+.ipynb_checkpoints/
+
+# 로그
+logs/
+*.log
+
+# 큰 파일들만 제외
+valhalla_data/valhalla_tiles.tar
+valhalla_data/pbfs/*.osm.pbf
+valhalla_data/valhalla_tiles/
+*.tar
+*.tar.gz
+*.zip
+
+# 임시 파일
+*.tmp
+*.bak
