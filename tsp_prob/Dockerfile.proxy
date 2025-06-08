@@ -1,0 +1,23 @@
+FROM python:3.9-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements_proxy.txt /app/
+RUN pip install --no-cache-dir -r requirements_proxy.txt
+
+COPY traffic_proxy.py /app/
+
+RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8003
+
+CMD ["python", "-u", "traffic_proxy.py"]
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8003/health || exit 1

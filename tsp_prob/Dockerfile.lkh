@@ -1,0 +1,43 @@
+FROM python:3.9-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    make \
+    gcc \
+    g++ \
+    curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements_lkh.txt /app/
+RUN pip install --no-cache-dir -r requirements_lkh.txt
+
+COPY lkh_src /app/lkh_src
+RUN cd /app/lkh_src && \
+    LKH_DIR=$(find . -maxdepth 1 -name 'LKH-*' -type d -print -quit) && \
+    if [ -z "$LKH_DIR" ]; then echo "LKH source directory not found!" && exit 1; fi && \
+    cd "$LKH_DIR" && \
+    mkdir -p SRC/OBJ && \
+    make && \
+    cp LKH /usr/local/bin/LKH && \
+    chmod +x /usr/local/bin/LKH && \
+    cd /app && \
+    rm -rf /app/lkh_src
+
+COPY lkh_app.py /app/
+COPY run_lkh_internal.py /app/
+
+RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
+
+RUN cp $(which curl) /usr/local/bin/curl && \
+    chmod +x /usr/local/bin/curl
+
+USER appuser
+
+EXPOSE 5001
+
+CMD ["python", "-u", "lkh_app.py"]
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD /usr/local/bin/curl -f http://localhost:5001/health || exit 1

@@ -1,0 +1,118 @@
+services:
+  valhalla:
+    image: ghcr.io/gis-ops/docker-valhalla/valhalla:3.5.1
+    container_name: valhalla_seoul
+    volumes:
+      - ./valhalla_data:/custom_files
+    restart: unless-stopped
+    networks:
+      - tsp_network
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
+    
+  traffic-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    container_name: traffic_proxy_seoul
+    ports:
+      - "8002:8003"
+    depends_on:
+      - valhalla
+    env_file:
+      - secret.env
+    environment:
+      - VALHALLA_URL=http://valhalla:8002
+    volumes:
+      - ./data:/data:ro
+    restart: unless-stopped
+    networks:
+      - tsp_network
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
+    
+  lkh:
+    build:
+      context: .
+      dockerfile: Dockerfile.lkh
+    container_name: lkh_seoul
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+    networks:
+      - tsp_network
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
+    
+  pickup-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.pickup
+    container_name: pickup_service_seoul
+    ports:
+      - "5000:5000"
+    depends_on:
+      - traffic-proxy
+      - lkh
+    env_file:
+      - secret.env
+    environment:
+      - VALHALLA_HOST=traffic-proxy
+      - VALHALLA_PORT=8003
+      - LKH_SERVICE_URL=http://lkh:5001/solve
+      - FLASK_ENV=production
+    volumes:
+      - ./data:/data:ro
+    restart: unless-stopped
+    networks:
+      - tsp_network
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
+  
+  delivery-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.delivery
+    container_name: delivery_service_seoul
+    ports:
+      - "5002:5000"
+    depends_on:
+      - traffic-proxy
+      - lkh
+      - pickup-service
+    env_file:
+      - secret.env
+    environment:
+      - VALHALLA_HOST=traffic-proxy
+      - VALHALLA_PORT=8003
+      - LKH_SERVICE_URL=http://lkh:5001/solve
+      - PICKUP_SERVICE_URL=http://pickup-service:5000
+      - FLASK_ENV=production
+      - PORT=5000
+    volumes:
+      - ./data:/data:ro
+    restart: unless-stopped
+    networks:
+      - tsp_network
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
+
+networks:
+  tsp_network:
+    name: tsp_network
+    driver: bridge

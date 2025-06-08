@@ -1,0 +1,29 @@
+FROM python:3.9-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libgeos-dev \
+    libgdal-dev \
+    gdal-bin \
+    gcc \
+    g++ \
+    python3-dev \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements_pickup.txt /app/
+RUN pip install --no-cache-dir -r requirements_pickup.txt
+
+COPY delivery_service.py /app/
+COPY main_service.py /app/
+COPY get_valhalla_matrix.py /app/
+COPY get_valhalla_route.py /app/
+COPY auth.py /app/
+
+EXPOSE 5000
+
+CMD ["python", "/app/delivery_service.py"]
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:5000/api/delivery/status || exit 1
