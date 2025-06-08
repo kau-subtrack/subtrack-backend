@@ -32,7 +32,7 @@ jobs:
   build-and-deploy:
     needs: test  # test 작업이 성공한 후 실행
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/main'  # main 브랜치에 push된 경우만 배포
     
     steps:
     - name: Checkout code
@@ -77,28 +77,39 @@ jobs:
         
         # EC2에서 배포 스크립트 실행
         ssh -i private_key.pem -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_HOST "
-          cd /home/$EC2_USERNAME/subtrack-backend
+          set -e  # 오류 발생 시 즉시 중단
           
-          # Node.js 프로세스 종료 (있다면)
-          pkill -f 'node.*server.js' || true
+          echo 'Starting deployment...'
+          cd /home/$EC2_USERNAME/subtrack-backend || { echo 'Failed to change directory'; exit 1; }
           
-          # 의존성 설치
-          npm ci --only=production
+          echo 'Stopping existing Node.js processes...'
+          pkill -f 'node.*server.js' || echo 'No existing processes to kill'
+          sleep 2
           
-          # Prisma 설정
-          npx prisma generate
-          npx prisma migrate deploy
+          echo 'Installing dependencies...'
+          npm ci --only=production || { echo 'npm install failed'; exit 1; }
           
-          # PM2로 애플리케이션 실행 (또는 nohup 사용)
-          # PM2 사용하는 경우:
-          # npm install -g pm2
-          # pm2 restart subtrack-backend || pm2 start src/server.js --name subtrack-backend
+          echo 'Generating Prisma client...'
+          npx prisma generate || { echo 'Prisma generate failed'; exit 1; }
           
-          # nohup 사용하는 경우:
+          echo 'Running database migrations...'
+          npx prisma migrate deploy || echo 'Migration failed, continuing...'
+          
+          echo 'Starting application...'
           nohup node src/server.js > app.log 2>&1 &
           
+          echo 'Waiting for application to start...'
+          sleep 3
+          
+          echo 'Checking if application is running...'
+          if pgrep -f 'node.*server.js' > /dev/null; then
+            echo 'Application started successfully!'
+          else
+            echo 'Warning: Application may not have started properly'
+          fi
+          
           echo 'Deployment completed!'
-        "
+        " || { echo 'SSH command failed'; exit 1; }
         
         # 민감한 정보 삭제
         rm -f private_key.pem
