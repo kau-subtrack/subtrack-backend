@@ -1,0 +1,104 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ dev, main ]  # dev 또는 main 브랜치에 push 시 실행
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run tests
+      run: npm test
+    
+    - name: Check syntax
+      run: node -c src/server.js
+
+  build-and-deploy:
+    needs: test  # test 작업이 성공한 후 실행
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # main 브랜치에 push된 경우만 배포
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci --only=production
+    
+    - name: Create .env file
+      run: |
+        echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
+        echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+        echo "PORT=3000" >> .env
+        echo "NODE_ENV=production" >> .env
+    
+    - name: Generate Prisma Client
+      run: npx prisma generate
+    
+    - name: Deploy to EC2
+      env:
+        EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+        EC2_HOST: ${{ secrets.EC2_HOST }}
+      run: |
+        # SSH 키 설정
+        echo "$EC2_SSH_KEY" > private_key.pem
+        chmod 600 private_key.pem
+        
+        # 프로젝트 파일들을 EC2에 복사
+        rsync -avz -e "ssh -i private_key.pem -o StrictHostKeyChecking=no" \
+          --exclude node_modules \
+          --exclude .git \
+          --exclude .github \
+          --exclude tests \
+          ./ $EC2_USERNAME@$EC2_HOST:/home/$EC2_USERNAME/subtrack-backend/
+        
+        # EC2에서 배포 스크립트 실행
+        ssh -i private_key.pem -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_HOST "
+          cd /home/$EC2_USERNAME/subtrack-backend
+          
+          # Node.js 프로세스 종료 (있다면)
+          pkill -f 'node.*server.js' || true
+          
+          # 의존성 설치
+          npm ci --only=production
+          
+          # Prisma 설정
+          npx prisma generate
+          npx prisma migrate deploy
+          
+          # PM2로 애플리케이션 실행 (또는 nohup 사용)
+          # PM2 사용하는 경우:
+          # npm install -g pm2
+          # pm2 restart subtrack-backend || pm2 start src/server.js --name subtrack-backend
+          
+          # nohup 사용하는 경우:
+          nohup node src/server.js > app.log 2>&1 &
+          
+          echo 'Deployment completed!'
+        "
+        
+        # 민감한 정보 삭제
+        rm -f private_key.pem
