@@ -32,7 +32,7 @@ jobs:
   build-and-deploy:
     needs: test  # test 작업이 성공한 후 실행
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'  # main 브랜치에 push된 경우만 배포
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'  # main 또는 dev 브랜치에서 배포
     
     steps:
     - name: Checkout code
