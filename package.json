@@ -23,7 +23,9 @@
     "prisma": "^6.5.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.1.1"
   },
   "prisma": {
     "seed": "node src/scripts/seed.js"
